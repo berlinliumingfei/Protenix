@@ -107,6 +107,48 @@ protenix pred --input examples/input.json --use_msa false --enable_cache true
 - `--trimul_kernel` / `--triatt_kernel`: Choose specialized kernels (e.g., `cuequivariance`, `triattention`) for hardware acceleration.
 - `--enable_cache` / `--enable_fusion`: Enable memory/speed optimizations (recommended for GPU).
 
+
+### 4. Score-only Confidence Inference (No Diffusion)
+When you already have a PDB/CIF structure and only want confidence estimation, use the score-only wrapper.
+```bash
+python runner/confidence_only.py \
+  --structure examples/7pzb.pdb \
+  --output_dir ./output/score_only \
+  --model_name protenix_base_default_v1.0.0 \
+  --load_checkpoint_path ./release_data/checkpoints
+```
+
+Outputs:
+- `summary_confidence.json`
+- `full_confidence.json`
+- `summary.csv`
+- `pae_matrix.json` (完整 PAE 矩阵)
+
+This mode runs the confidence head on the provided structure and also reports `ipsae` in the summary output.
+
+#### Score-only 推理打分示例
+下面给出一个完整示例，演示如何运行打分并检查关键结果：
+
+```bash
+# 1) 运行 score-only 打分
+python runner/confidence_only.py \
+  --structure examples/7pzb.pdb \
+  --output_dir ./output/score_only_demo \
+  --model_name protenix_base_default_v1.0.0 \
+  --load_checkpoint_path ./release_data/checkpoints
+
+# 2) 查看 summary 指标（含 ipsae）
+python -m json.tool ./output/score_only_demo/summary_confidence.json
+
+# 3) 查看完整 PAE 矩阵文件（token-token）
+python -m json.tool ./output/score_only_demo/pae_matrix.json
+
+# 4) 查看 CSV 汇总
+cat ./output/score_only_demo/summary.csv
+```
+
+`summary_confidence.json` 适合做快速排序与阈值筛选，`pae_matrix.json` 适合做接口/区域级别误差分析与可视化。
+
 ### Inference via Bash Script
 Alternatively, use the provided demo script for automated runs:
 ```bash

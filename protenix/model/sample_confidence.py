@@ -43,6 +43,27 @@ def merge_per_sample_confidence_scores(
     return traverse_and_aggregate(summary_confidence_list, aggregation_func=stack_score)
 
 
+def compute_ipsae_from_token_pair_pae(
+    token_pair_pae: torch.Tensor,
+    token_asym_id: torch.Tensor,
+    pae_cutoff: float = 10.0,
+) -> torch.Tensor:
+    """Compute inter-chain pSAE (ipSAE) from token-pair PAE.
+
+    The score is defined as the mean of ``1 / (1 + pae / pae_cutoff)`` over
+    inter-chain token pairs.
+    """
+    interface_mask = token_asym_id[:, None] != token_asym_id[None, :]
+    interface_mask = interface_mask.to(token_pair_pae.device)
+    if not torch.any(interface_mask):
+        return torch.zeros(token_pair_pae.shape[:-2], device=token_pair_pae.device)
+
+    transformed = 1.0 / (1.0 + token_pair_pae / pae_cutoff)
+    masked_sum = (transformed * interface_mask).sum(dim=(-2, -1))
+    denom = interface_mask.sum().to(transformed.dtype)
+    return masked_sum / torch.clamp_min(denom, 1.0)
+
+
 def _compute_full_data_and_summary(
     configs: ConfigDict,
     pae_logits: torch.Tensor,
